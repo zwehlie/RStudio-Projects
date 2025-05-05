@@ -1,0 +1,305 @@
+---
+title: "STAT 7220 - Final Exam"
+author: "Dr Austin R Brown"
+format: pdf
+editor: visual
+---
+
+\textbf{\underline{DUE: May 5, 2025 at 11:59 PM via D2L}}
+
+\vskip 0.25 in
+
+\textbf{\underline{PART 1 INSTRUCTIONS:}} Let's say you own a new food truck called **Buster's Breakfast Burritos**. To determine the best ingredients for your burritos, and as a means of minimizing food (and money) waste, you decide to conduct an experiment. Specifically, you want to investigate the following treatments:
+
+| Factor   | Levels                  |
+|:---------|:------------------------|
+| Protein  | Bacon, Sausage, Chorizo |
+| Salsa    | Mild, Hot               |
+| Potatoes | Yes, No                 |
+
+To gather data for this experiment, you recruit $r=5$ local residents for each of the $3\times 2\times 2=12$ treatment combinations. After each participant has tasted their randomly assigned burrito, you ask them to rate the burrito on a scale of 1 to 10 (1 = terrible, 10 = amazing). The data are stored in the file `Busters Burritos.xlsx` in the D2L. With these data, I want you to:
+
+1.  Briefly state the objective of the experiment.
+
+The goal of this experiment is to figure out which combination of ingredients are the best ingredients for your burritos. This is according to the customer's ratings.
+
+2.  State the outcome variable and how it was measured.
+
+The outcome variable in this experiment is the rating given by each participant. It is measured on a scale from 1 to 10, where 1 means the burrito tasted terrible and 10 means it was amazing.
+
+3.  State the main effects. What lurking variables may be present?
+
+The main effect is the ingredients being tested and whether potatoes should be included. The lurking variables are the participant's personal preference, how fresh the food, and whether or not they are hungry at the moment.
+
+4.  Why might a full factorial design be preferred here to a $2^k$ fractional factorial design?
+
+A full factorial design is the better choice here because we are only testing three factors and with all the combinations it is just a total of 12 treatments. It is easy to manage without needing to cut corners. Using a full factorial design lets us see not just the impact of each individual ingredient but how they might work together in different ways. A fractional design would save a lot of time and effort, but since there aren't that many combinations to begin with it makes more sense to collect all the data.
+
+5.  State all sets of statistical hypotheses.
+
+**Null Hypothesis:** The ingredient and interaction has no effect on burrito ratings
+
+**Alternative Hypothesis:** At least one ingredient and interaction has an effect on burrito ratings.
+
+6.  Perform appropriate exploratory/descriptive analysis including summary statistics and appropriate visualizations. Do these analyses provide any support for the hypotheses? Briefly explain.
+
+    The boxplot comparing protein and salsa shows that mild salsa tends to perform better than hot salsa across all proteins, and that chorizo is a hit or miss with what it’s paired with.
+
+    The potatoes boxplot clearly shows a slight improvement in ratings when potatoes are included, suggesting that they might be a good addition. This supports the alternative hypothesis more.
+
+```{{r}}
+library(tidyverse)
+library(readxl)
+
+#dataset
+df <- read_excel("Busters Burritos.xlsx")
+colnames(df)[which(names(df) == "Satisfaction")] <- "Rating"
+
+df$Protein <- as.factor(df$Protein)
+df$Salsa <- as.factor(df$Salsa)
+df$Potatoes <- as.factor(df$Potatoes)
+
+#stats of ingredients
+df %>%
+  group_by(Protein, Salsa, Potatoes) %>%
+  summarise(
+    Mean = mean(Rating),
+    SD = sd(Rating),
+    Count = n()
+  )
+
+#Protein and Salsa Boxplot Protein and Salsa
+ggplot(df, aes(x = Protein, y = Rating, fill = Salsa)) +
+  geom_boxplot() +
+  labs(title = " Protein and Salsa Burrito Ratings",
+       x = "Protein", y = "Rating") +
+  theme_minimal()
+
+#Potatoes Boxplot
+ggplot(df, aes(x = Potatoes, y = Rating)) +
+  geom_boxplot(fill = "blue") +
+  labs(title = "Burrito Ratings including potatoes",
+       x = "Potatoes", y = "Rating") +
+  theme_minimal()
+
+```
+
+<!-- -->
+
+7.  Fit the full factorial ANOVA model. Check the assumption of normality using a testing method and a visual method. Does the assumption hold? Why or why not?
+
+    The assumption does hold. The ANOVA model showed that salsa (p = 0.00837) and potatoes (p = 0.00624) both had statistically significant effects on the ratings. That means these two ingredients do seem to make a real difference in how much people liked the burritos.
+
+    The Shapiro-Wilk test gave a p-value of 0.272, which is way above 0.05, so there's no reason to think the residuals aren’t normal. The Q-Q plot mostly follows the straight line.
+
+    ```{r}
+    #Anova Model
+    anova_model <- aov(Rating ~ Protein * Salsa * Potatoes, data = df)
+    summary(anova_model)
+
+    #Normality
+    shapiro.test(residuals(anova_model))
+
+    #Q-Q plot
+    qqnorm(residuals(anova_model))
+    qqline(residuals(anova_model), col = "blue")
+    ```
+
+<!-- -->
+
+8.  Check the assumption of constant variance using a testing method and a visual method. Does the assumption hold? Why or why not?
+
+    The Levene's Test does prove that the assumption holds. The test gave us a p-value of 0.9938 which is greater than 0.05 therefore we fail to reject the null hypothesis. This means the model's assumptions are good.
+
+    ```{r}
+    plot(anova_model, which = 1)
+    library(car)
+    leveneTest(Rating ~ Protein * Salsa * Potatoes, data = df)
+
+    ```
+
+9.  Report the ANOVA table. What statistical conclusions can we draw about our main effects and interaction effects?
+
+    The ANOVA results showed that salsa and potatoes both had a statistically significant effect on burrito ratings, with p-values of 0.00837 and 0.00624 respectively. Protein was not statistically significant with a p-value of 0.18847. This suggests that the choice between bacon, sausage, or chorizo didn’t have a strong impact on participant's ratings. The interactions were also not statistically significant so therefore salsa and potatoes were significant on there own.
+
+<!-- -->
+
+10. If the interactions and/or main effects were found to be statistically meaningful, conduct appropriate post-hoc tests. Report the results of these tests and any conclusions you can draw from them. If the interactions and/or main effects were not found to be statistically meaningful, explain why post-hoc tests would not be appropriate.
+
+    The average rating for burritos with mild salsa was 0.83 points higher than those with hot salsa, with a 95% confidence interval from 0.2232 to 1.4368. For burritos with potatoes, they were rated 0.86 points higher than those without, with a confidence interval from 0.2565 to 1.4701. Both effects had adjusted p-values well below 0.05, which meant they had an impact on how people rated the burritos. Protein (p = 0.18847) and all interactions were not statistically significant, so post-hoc tests were not appropriate for those factors.
+
+```{r}
+# Tukey's HSD Salsa
+TukeyHSD(anova_model, "Salsa")
+
+# Tukey's HSD Potatoes
+TukeyHSD(anova_model, "Potatoes")
+```
+
+11. Calculate and interpret partial $\eta^2$ for the main effects.
+
+    Partial n\^2 tells us the proportion of variance explained by each factor while controlling for the others. The partial n\^2 for salsa was 0.14, and for potatoes it was 0.15, which are both considered moderate effect sizes. This means these two ingredients had a meaningful impact on how people rated the burritos. The protein factor had a lower partial n\^2 of 0.07, which matches the earlier result that it was not statistically significant.
+
+```{r}
+library(effectsize)
+eta_squared(anova_model, partial = TRUE)
+```
+
+12. Give an overall conclusion for the experiment. Which burrito combination(s) should you include on your menu regularly? What are the limitations of your experiment? How could you improve it in the future?
+
+The ingredients that had the most impact on how much people liked the burritos were salsa and potatoes. Burritos with mild salsa and those that included potatoes consistently received higher ratings. The type of protein didn’t significantly affect ratings, so any of the three options (bacon, sausage, or chorizo) could work on the menu.
+
+A limitation would be sample size since it was relatively small with only 5 participants per group. To improve the study in the future I would recruit more participants as well as run the test at different times of day. This would help reduce biases.
+
+\textbf{\underline{PART 2 INSTRUCTIONS:}} After finalizing your breakfast burrito menu, now you want to focus Buster's Breakfast Burritos on maximizing sales through strategic placement of the truck itself and marketing. Obviously there are a lot of factors at play, so you decide to focus your attention on three: **Location** (could set up at a local brewery or at a local university); **Timing** (weekday or weekend); and **Marketing** (independently or in partnership with the brewery/university). See the below table:
+
+| Run | Location (A)    | Timing (B)   | Marketing (C)    |
+|-----|-----------------|--------------|------------------|
+| 1   | \- (Brewery)    | \- (Weekday) | \- (Independent) |
+| 2   | \+ (University) | \- (Weekday) | \+ (Partnership) |
+| 3   | \- (Brewery)    | \+ (Weekend) | \+ (Partnership) |
+| 4   | \+ (University) | \+ (Weekend) | \- (Independent) |
+
+To be more efficient with time and resources, you decide to conduct a $2^{3-1}$ fractional factorial design where your ultimate outcome is the sales amount (in dollars) for the day you set up. For each of the above runs, you will set up your truck $r=2$ times and record the sales amount. The data are stored in the `Busters Burrito Sales.xlsx` file in D2L. With these day, I want you to:
+
+1.  Briefly describe the objective of the experiment.
+
+The goal of this experiment is to figure out which combination of location, timing, and marketing strategy leads to the highest sales for Buster’s Breakfast Burritos. This will be done by testing setups at either a brewery or university on weekdays or weekends, and using either independent or partnered marketing.
+
+2.  Specify the outcome variable and how it is measured.
+
+The outcome variable is the sales amount, which measures how much money Buster’s Breakfast Burritos made during each setup.
+
+3.  Specify the independent variables. What lurking variables may be present?
+
+The independent variables for this experiment are location, timing, and the marketing (independent or in partnership). These are the factors we intentionally changed to see how they affect sales. The lurking variables that could be present are weather, and traffic conditions which could affect how many people show up.
+
+4.  Explain why a fractional design is appropriate here. What are the advantages and disadvantages of using a fractional design?
+
+A fractional factorial design is appropriate because it allows us to study three factors efficiently without running all possible combinations. The main advantage is that it saves time and resources. A disadvantage is that we can’t separate all effects clearly. Still, it gives useful insights and saves time.
+
+5.  State the sets of null and alternative hypotheses for this experiment.
+
+**Null Hypothesis:** The factor has no effect on sales.
+
+**Alternative Hypothesis:** The factor has an effect on sales.
+
+6.  Perform appropriate exploratory/descriptive analysis including summary statistics and appropriate visualizations. Do these analyses provide any support for the hypotheses? Briefly explain.
+
+    The weekend sales were higher than weekday sales, and partnership marketing generally had a better performance than going independent. Sales at the brewery were a little higher on average than the university, but the difference wasn’t as strong as the effect of timing and marketing. These patterns suggest that both when and how you promote the truck make a real difference. This supports the alternative hypotheses.
+
+```{r}
+library(readxl)
+library(tidyverse)
+
+#dataset
+df <- read_excel("Busters Burrito Sales.xlsx")
+
+#factors
+df$Location <- as.factor(df$Location)
+df$Timing <- as.factor(df$Timing)
+df$Marketing <- as.factor(df$Marketing)
+
+# Summary statistics
+df %>%
+  group_by(Location, Timing, Marketing) %>%
+  summarise(
+    Mean = mean(Sales),
+    SD = sd(Sales),
+    Count = n()
+  )
+
+# Boxplots for location, timing, and marketing
+ggplot(df, aes(x = Location, y = Sales)) + geom_boxplot()
+ggplot(df, aes(x = Timing, y = Sales)) + geom_boxplot()
+ggplot(df, aes(x = Marketing, y = Sales)) + geom_boxplot()
+
+```
+
+7.  Assuming a defining relation of $I=ABC$, specify the aliasing structure of the design. What does this mean for the interpretation of the main effects and interactions?
+
+This experiment uses a fractional factorial design with a defining relation of I=ABC which causes each main effect to be aliased with a two-way interaction. Location is aliased with Timing × Marketing, Timing with Location × Marketing, and finally Marketing with Location × Timing. As a result, any observed main effect could actually reflect an interaction, making it hard to separate their individual impacts. We can still analyze main effects in the ANOVA, but they must be interpreted with caution.
+
+8.  Fit the appropriate ANOVA model to the data. Assess the normality assumption. Do we have evidence to support the assumption of normality? Why or why not?
+
+    The Shapiro-Wilk test has a p-value of 0.1012, which is greater than 0.05. This means we don’t have strong evidence that the residuals are not normal. The Q-Q plot also had some slight deviation at the ends, but the points mostly followed the straight line. Both tests support the assumption of normality.
+
+```{r}
+# ANOVA model
+anova_model <- aov(Sales ~ Location + Timing + Marketing, data = df)
+summary(anova_model)
+
+# Normality
+shapiro.test(residuals(anova_model))
+
+# Q-Q plot
+qqnorm(residuals(anova_model))
+qqline(residuals(anova_model), col = "blue")
+```
+
+9.  Assess the constant variance assumption. Do we have evidence to support the assumption of constant variance? Why or why not?
+
+    The plot looked random with no clear funnel shape, which suggests constant variance might be reasonable. However, Levene’s Test gave a very small p-value (\< 2.2e-16), which is strong evidence against the assumption of equal variances.
+
+```{r}
+plot(anova_model, which = 1)
+library(car)
+leveneTest(Sales ~ Location * Timing * Marketing, data = df)
+```
+
+10. Report and interpret the ANOVA table. What conclusions can we draw about our main effects? Do the results of these analyses support the null or alternative hypotheses more strongly?
+
+The ANOVA table shows that all three main effects: Location, Timing, and Marketing are statistically significant with location (p-value=0.000121), timing (p-value=4.09e-07), and Marketing (p-value=0.000112). All p-values are below 0.05, we reject the null hypotheses for each factor. This means that each one has a meaningful impact on sales. The results support the alternative hypotheses more strongly.
+
+11. Calculate and interpret the values for the main effects. Which effects seem more important? Why?
+
+    Timing had the largest impact with weekend sales being about \$389.29 higher than weekday sales. Marketing had a big effect with partnered marketing leading to about \$221.65 more in sales compared to independent marketing. Location showed an effect of around \$219.74 with the brewery performing slightly better than the university. These results suggest that all three factors influence sales but timing has the most influence since weekends or weekdays determined whether people would come or not.
+
+    ```{r}
+    #Mean difference-Location
+    location_means <- tapply(df$Sales, df$Location, mean)
+    location_effect <- max(location_means) - min(location_means)
+
+    #Mean difference-Timing
+    timing_means <- tapply(df$Sales, df$Timing, mean)
+    timing_effect <- max(timing_means) - min(timing_means)
+
+    #Mean difference-Marketing
+    marketing_means <- tapply(df$Sales, df$Marketing, mean)
+    marketing_effect <- max(marketing_means) - min(marketing_means)
+
+    # Effects
+    location_effect
+    timing_effect
+    marketing_effect
+
+    ```
+
+<!-- -->
+
+12. Calculate and interpret the partial $\eta^2$ for the main effects. Which effects seem more important? Why?
+
+    Timing had the largest effect with a partial n\^2 of 0.89 which explained a substantial portion of the variation in sales. Location and marketing both had partial n\^2 values of 0.72 which showed that they also had strong effects but a little weaker than timing. This suggests that all three factors played an important role, but timing was the most influential.
+
+    ```{r}
+    library(effectsize)
+    eta_squared(anova_model, partial = TRUE)
+    ```
+
+13. Give an overall conclusion for the experiment. Which location, timing, and marketing combination(s) should you use to maximize sales? What are the limitations of your experiment? How could you improve it in the future?
+
+The results show that timing, location, and marketing all significantly affect sales. The best combination was setting up at the brewery on a weekend with a marketing partnership which would then bring the highest revenue. Timing had the strongest impact with weekends performing better than weekdays. The limitations are the small sample size and use of a fractional design. I would improve the study by considering a full factorial design.
+
+\textbf{\underline{PART 3 INSTRUCTIONS:}} Please briefly respond to the following questions:
+
+1.  How do we de-alias the main effects and interactions in a fractional factorial design? Why is this important? Why may it not always be feasible?
+
+To de-alias the main effects and interactions in a fractional factorial design, we should use a full factorial design to include all treatment combinations. This matters because aliasing makes it hard to tell if a certain outcome happened because of a factor or an interaction. But de-aliasing isn’t always realistic since it takes more time, resources, and data — which isn’t ideal in some situations.
+
+2.  In all of our assignments, I have had you specify/consider a lot of characteristics of an experiment before getting into the analysis. Why is this good practice?
+
+That’s because specifying details like factors, levels, outcomes, and design before analyzing helps the experiment stay well-structured and focused on the question it’s supposed to answer. It also helps prevent mistakes and reduce bias.
+
+3.  What is the most important thing you learned in this class?
+
+I learned that instead of just relying on p-values or graphs, choosing the right design is what really helps make sure the data is analyzed in the best way. I also realized how things like blocking, randomization, and overall design can affect the quality of the conclusions we get.
